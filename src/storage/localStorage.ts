@@ -24,6 +24,7 @@ export function createDefaultProgress(): PlayerProgress {
       levelIndex: 0,
       completedLevels: [],
       bossDefeated: false,
+      unlockedUniverses: [1],
       lives: 5,
     },
     highScore: {
@@ -58,6 +59,14 @@ export function loadProgress(): PlayerProgress {
       sfxVolume: parsed.settings?.sfxVolume ?? 0.7,
       musicVolume: parsed.settings?.musicVolume ?? 0.35,
       seenControlsOverlay: parsed.settings?.seenControlsOverlay ?? false,
+    };
+    const unlocked = parsed.campaign?.unlockedUniverses ?? [1];
+    const withBoss = parsed.campaign?.bossDefeated
+      ? Array.from(new Set([...unlocked, 1, 2]))
+      : Array.from(new Set([...unlocked, 1]));
+    parsed.campaign = {
+      ...parsed.campaign,
+      unlockedUniverses: withBoss.sort((a, b) => a - b),
     };
     return parsed;
   } catch {

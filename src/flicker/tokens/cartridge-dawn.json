@@ -1,0 +1,84 @@
+{
+  "$schemaNote": "Console Cascade era tokens — Cartridge Dawn (U1). Homage only; no trademarks. Apply via data-era=\"cartridge-dawn\" on board shell; CSS maps var(--cc-*) from these keys.",
+  "id": "cartridge-dawn",
+  "universeIndex": 0,
+  "displayName": "Cartridge Dawn",
+  "homageNote": "Atari-era feel only — never use real console/company names in UI.",
+  "cssSelector": "[data-era=\"cartridge-dawn\"]",
+  "palette": {
+    "bg": "#0a0f0a",
+    "bgElevated": "#121a12",
+    "gridLine": "#1c3a1c",
+    "phosphorPrimary": "#3dff6a",
+    "phosphorAmber": "#ffb84d",
+    "phosphorDim": "#1a5c2e",
+    "hudChrome": "#2a4a2a",
+    "hudText": "#9affb0",
+    "danger": "#ff5a3d",
+    "ghostAlpha": 0.28
+  },
+  "pieces": {
+    "I": { "fill": "#3dff6a", "outline": "#0a0f0a" },
+    "O": { "fill": "#ffb84d", "outline": "#0a0f0a" },
+    "T": { "fill": "#6aff9a", "outline": "#0a0f0a" },
+    "S": { "fill": "#c8ff4d", "outline": "#0a0f0a" },
+    "Z": { "fill": "#ff8a4d", "outline": "#0a0f0a" },
+    "J": { "fill": "#4dffc8", "outline": "#0a0f0a" },
+    "L": { "fill": "#ffe04d", "outline": "#0a0f0a" }
+  },
+  "typography": {
+    "hudFamily": "ui-monospace, \"Cascadia Mono\", monospace",
+    "hudWeight": 700,
+    "hudLetterSpacing": "0.06em",
+    "scoreScale": 1.05
+  },
+  "geometry": {
+    "pixelSnap": 2,
+    "minoRadius": 0,
+    "gridInsetPx": 1,
+    "bloomPx": 6
+  },
+  "fxOverlay": {
+    "scanlineOpacity": 0.16,
+    "scanlineGapPx": 3,
+    "noiseOpacity": 0.08,
+    "phosphorBloom": 0.35,
+    "chromaticPx": 0.6,
+    "vignette": 0.22,
+    "curvature": 0.04
+  },
+  "motion": {
+    "enterStyle": "hard-cut-glitch",
+    "exitStyle": "reverse-glitch",
+    "decayTrailMs": 90,
+    "cameraShakePx": 0
+  },
+  "audio": {
+    "bed": "tape-hiss-soft",
+    "lock": "blip-blunt",
+    "clear": "tick-phosphor",
+    "reward": "cart-chime-lo",
+    "duckModernDb": -8
+  },
+  "readability": {
+    "minContrastPieceVsBg": 4.5,
+    "activePieceBoost": 1.15,
+    "neverBlurMinos": true,
+    "fxUnderStackOnly": true
+  },
+  "cssVars": {
+    "--cc-bg": "{palette.bg}",
+    "--cc-grid": "{palette.gridLine}",
+    "--cc-hud": "{palette.hudText}",
+    "--cc-piece-I": "{pieces.I.fill}",
+    "--cc-piece-O": "{pieces.O.fill}",
+    "--cc-piece-T": "{pieces.T.fill}",
+    "--cc-piece-S": "{pieces.S.fill}",
+    "--cc-piece-Z": "{pieces.Z.fill}",
+    "--cc-piece-J": "{pieces.J.fill}",
+    "--cc-piece-L": "{pieces.L.fill}",
+    "--cc-ghost-a": "{palette.ghostAlpha}",
+    "--cc-bloom": "{geometry.bloomPx}px",
+    "--cc-scanline-a": "{fxOverlay.scanlineOpacity}"
+  }
+}

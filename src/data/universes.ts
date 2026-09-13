@@ -1,5 +1,65 @@
 import type { Universe } from '../types/models';
 
+/** UI catalog entry — playable content may still be stubbed. */
+export interface UniverseMeta {
+  id: string;
+  index: number;
+  name: string;
+  eraLabel: string;
+  unlockHint?: string;
+  playable: boolean;
+}
+
+export const UNIVERSE_CATALOG: UniverseMeta[] = [
+  {
+    id: 'u1_cartridge_dawn',
+    index: 1,
+    name: 'Cartridge Dawn',
+    eraLabel: 'Cartridge Dawn Era',
+    playable: true,
+  },
+  {
+    id: 'u2_eight_bit_revival',
+    index: 2,
+    name: '8-Bit Revival',
+    eraLabel: '8-Bit Revival Era',
+    unlockHint: 'Defeat Maw of the Maze',
+    playable: false,
+  },
+  {
+    id: 'u3_sixteen_bit_rival',
+    index: 3,
+    name: '16-Bit Rival',
+    eraLabel: '16-Bit Rival Era',
+    unlockHint: 'Clear Universe 2 boss',
+    playable: false,
+  },
+  {
+    id: 'u4_mode7_majesty',
+    index: 4,
+    name: 'Mode-7 Majesty',
+    eraLabel: 'Mode-7 Majesty Era',
+    unlockHint: 'Clear Universe 3 boss',
+    playable: false,
+  },
+  {
+    id: 'u5_cd_spectacle',
+    index: 5,
+    name: 'CD Spectacle',
+    eraLabel: 'CD Spectacle Era',
+    unlockHint: 'Clear Universe 4 boss',
+    playable: false,
+  },
+  {
+    id: 'u6_polygon_adventure',
+    index: 6,
+    name: 'Polygon Adventure',
+    eraLabel: 'Polygon Adventure Era',
+    unlockHint: 'Clear Universe 5 boss',
+    playable: false,
+  },
+];
+
 export const UNIVERSE_1: Universe = {
   id: 'u1_cartridge_dawn',
   index: 1,
@@ -143,3 +203,7 @@ export const UNIVERSE_1: Universe = {
 };
 
 export const UNIVERSES: Universe[] = [UNIVERSE_1];
+
+export function getUniverseByIndex(index: number): Universe | undefined {
+  return UNIVERSES.find((u) => u.index === index);
+}

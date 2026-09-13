@@ -129,6 +129,8 @@ export interface PlayerProgress {
     levelIndex: number;
     completedLevels: string[];
     bossDefeated: boolean;
+    /** 1-based universe indices unlocked for select screen */
+    unlockedUniverses: number[];
     lives: number;
   };
   highScore: {
@@ -169,6 +171,7 @@ export type AppScreen =
   | 'ability_pick'
   | 'missions'
   | 'campaign_map'
+  | 'universe_select'
   | 'level_result'
   | 'wash';
 

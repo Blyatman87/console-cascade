@@ -1,0 +1,86 @@
+{
+  "id": "eight-bit-revival",
+  "universeIndex": 1,
+  "displayName": "8-Bit Revival",
+  "homageNote": "NES-era feel only — no trademarks in player-facing copy.",
+  "cssSelector": "[data-era=\"eight-bit-revival\"]",
+  "palette": {
+    "bg": "#0d0d18",
+    "bgElevated": "#1a1a2e",
+    "gridLine": "#3a3a5c",
+    "accentBrick": "#b53a3a",
+    "accentSky": "#5c9ed8",
+    "hudChrome": "#2a2a44",
+    "hudText": "#f0f0f0",
+    "danger": "#e83030",
+    "ghostAlpha": 0.3
+  },
+  "pieces": {
+    "I": { "fill": "#5c9ed8", "outline": "#0d0d18" },
+    "O": { "fill": "#e8c840", "outline": "#0d0d18" },
+    "T": { "fill": "#a85cd8", "outline": "#0d0d18" },
+    "S": { "fill": "#50c878", "outline": "#0d0d18" },
+    "Z": { "fill": "#e83030", "outline": "#0d0d18" },
+    "J": { "fill": "#4060d0", "outline": "#0d0d18" },
+    "L": { "fill": "#e87830", "outline": "#0d0d18" }
+  },
+  "typography": {
+    "hudFamily": "\"Press Start 2P\", ui-monospace, monospace",
+    "hudWeight": 400,
+    "hudLetterSpacing": "0.02em",
+    "scoreScale": 0.95,
+    "note": "Fallback to monospace if pixel font not loaded; do not require licensed fonts."
+  },
+  "geometry": {
+    "pixelSnap": 8,
+    "minoRadius": 0,
+    "gridInsetPx": 0,
+    "bloomPx": 0,
+    "outlinePx": 1
+  },
+  "fxOverlay": {
+    "scanlineOpacity": 0.1,
+    "scanlineGapPx": 2,
+    "noiseOpacity": 0.06,
+    "phosphorBloom": 0,
+    "chromaticPx": 0,
+    "vignette": 0.12,
+    "curvature": 0,
+    "bloomTint": "rgba(0,0,0,0)"
+  },
+  "motion": {
+    "enterStyle": "stutter-step",
+    "exitStyle": "stutter-step-reverse",
+    "decayTrailMs": 0,
+    "cameraShakePx": 1
+  },
+  "audio": {
+    "bed": "coarse-noise-short",
+    "lock": "square-plink",
+    "clear": "arpeggio-short",
+    "reward": "coin-8bit",
+    "duckModernDb": -7
+  },
+  "readability": {
+    "minContrastPieceVsBg": 4.5,
+    "activePieceBoost": 1.1,
+    "neverBlurMinos": true,
+    "fxUnderStackOnly": true,
+    "hardEdgesOnly": true
+  },
+  "cssVars": {
+    "--cc-bg": "{palette.bg}",
+    "--cc-grid": "{palette.gridLine}",
+    "--cc-hud": "{palette.hudText}",
+    "--cc-piece-I": "{pieces.I.fill}",
+    "--cc-piece-O": "{pieces.O.fill}",
+    "--cc-piece-T": "{pieces.T.fill}",
+    "--cc-piece-S": "{pieces.S.fill}",
+    "--cc-piece-Z": "{pieces.Z.fill}",
+    "--cc-piece-J": "{pieces.J.fill}",
+    "--cc-piece-L": "{pieces.L.fill}",
+    "--cc-ghost-a": "{palette.ghostAlpha}",
+    "--cc-bloom": "0px",
+    "--cc-scanline-a": "{fxOverlay.scanlineOpacity}"
+  }
+}

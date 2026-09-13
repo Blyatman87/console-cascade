@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameEngine } from '../game/engine';
 import type { Inventory, PowerUpId, ThemePalette, GameMode } from '../types/models';
 import type { ControlBindings } from '../input/controls';
@@ -14,6 +14,7 @@ import { useKeyboard } from '../hooks/useKeyboard';
 import { ROWS, COLS } from '../game/board';
 import { audio } from '../audio/audio';
 import { formatCode } from '../input/controls';
+import { FlickerLayer, type FlickerLayerHandle } from './FlickerLayer';
 
 interface Props {
   engine: GameEngine;
@@ -44,6 +45,9 @@ interface Props {
   clearToken: number;
   /** Show QA force-complete (URL ?debug=1). */
   debugMode?: boolean;
+  /** Campaign L2+ era flicker (never L1). */
+  flickerEnabled?: boolean;
+  onFlickerReward?: (cartridges: number) => void;
 }
 
 export function PlayScreen({
@@ -73,9 +77,15 @@ export function PlayScreen({
   inputLocked = false,
   clearToken,
   debugMode = false,
+  flickerEnabled = false,
+  onFlickerReward,
 }: Props) {
   const [cellSize, setCellSize] = useState(28);
   const [showSettings, setShowSettings] = useState(false);
+  const boardShellRef = useRef<HTMLDivElement>(null);
+  const flickerRef = useRef<FlickerLayerHandle>(null);
+  const flickerOfferedRef = useRef(false);
+  const [flickerOfferOpen, setFlickerOfferOpen] = useState(false);
   const state = engine.state;
   const ghost = engine.getGhost();
 
@@ -104,15 +114,35 @@ export function PlayScreen({
     return () => audio.stopMusic();
   }, [muted]);
 
-  // SFX from engine events
+  // SFX from engine events + flicker board façade
   useEffect(() => {
     const ev = engine.state.lastEvent;
     if (!ev) return;
     if (ev.type === 'piece_locked') audio.play('lock');
-    else if (ev.type === 'lines_cleared') audio.play('clear');
-    else if (ev.type === 'level_complete') audio.play('levelComplete');
+    else if (ev.type === 'lines_cleared') {
+      audio.play('clear');
+      flickerRef.current?.notifyLineClear(ev.count);
+    } else if (ev.type === 'level_complete') audio.play('levelComplete');
     else if (ev.type === 'level_up') audio.play('ui');
+    else if (ev.type === 'game_over') flickerRef.current?.notifyTopOut();
   }, [tick, engine]);
+
+  // Auto-offer era flicker once mid-level on campaign L2+ (never L1)
+  useEffect(() => {
+    if (!flickerEnabled || flickerOfferedRef.current || inputLocked) return;
+    if (state.paused || state.gameOver || state.levelComplete) return;
+    const t = window.setTimeout(() => {
+      if (flickerOfferedRef.current) return;
+      if (engine.state.paused || engine.state.gameOver || engine.state.levelComplete) return;
+      flickerOfferedRef.current = true;
+      flickerRef.current?.offer({ challenge: 'survive' });
+    }, 9000);
+    return () => window.clearTimeout(t);
+  }, [flickerEnabled, inputLocked, state.paused, state.gameOver, state.levelComplete, engine]);
+
+  useEffect(() => {
+    flickerOfferedRef.current = false;
+  }, [engine]);
 
   const bump = useCallback(() => setTick((t) => t + 1), [setTick]);
 
@@ -124,7 +154,8 @@ export function PlayScreen({
     !showControlsOverlay &&
     !inputLocked;
 
-  useGameLoop(engine, loopActive, bump);
+  const loopActiveFinal = loopActive && !flickerOfferOpen;
+  useGameLoop(engine, loopActiveFinal, bump);
 
   const gameplayOff =
     state.paused ||
@@ -132,7 +163,8 @@ export function PlayScreen({
     state.levelComplete ||
     showSettings ||
     showControlsOverlay ||
-    inputLocked;
+    inputLocked ||
+    flickerOfferOpen;
 
   const handlers = useMemo(
     () => ({
@@ -160,6 +192,7 @@ export function PlayScreen({
       onHardDrop: () => {
         engine.hardDrop();
         audio.play('hard');
+        flickerRef.current?.notifyHardDrop();
         bump();
       },
       onRotateCW: () => {
@@ -173,6 +206,7 @@ export function PlayScreen({
       onHold: () => {
         engine.hold();
         audio.play('hold');
+        flickerRef.current?.notifyHold();
         bump();
       },
       onPause: () => {
@@ -311,13 +345,26 @@ export function PlayScreen({
           </div>
         </aside>
 
-        <div className="board-wrap">
+        <div
+          className="board-wrap"
+          ref={boardShellRef}
+          data-flicker="off"
+        >
           <GameBoard
             board={state.board}
             active={state.active}
             ghost={ghost}
             theme={theme}
             cellSize={cellSize}
+          />
+          <FlickerLayer
+            ref={flickerRef}
+            shellRef={boardShellRef}
+            enabled={flickerEnabled || debugMode}
+            width={COLS * cellSize}
+            height={ROWS * cellSize}
+            onReward={(n) => onFlickerReward?.(n)}
+            onUiPhaseChange={(phase) => setFlickerOfferOpen(phase === 'offer')}
           />
           {(slowActive || lockActive) && (
             <div className="effect-banner">
@@ -378,7 +425,7 @@ export function PlayScreen({
         />
       )}
 
-      {state.paused && !showSettings && !showControlsOverlay && !inputLocked && (
+      {state.paused && !showSettings && !showControlsOverlay && !inputLocked && !flickerOfferOpen && (
         <div className="overlay">
           <div className="overlay-card">
             <h2>Paused</h2>
@@ -401,16 +448,34 @@ export function PlayScreen({
               Quit to Menu
             </button>
             {debugMode && (
-              <button
-                type="button"
-                className="menu-btn ghost"
-                onClick={() => {
-                  engine.forceLevelComplete();
-                  bump();
-                }}
-              >
-                Debug: Complete Level
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="menu-btn ghost"
+                  onClick={() => {
+                    engine.forceLevelComplete();
+                    bump();
+                  }}
+                >
+                  Debug: Complete Level
+                </button>
+                <button
+                  type="button"
+                  className="menu-btn ghost"
+                  onClick={() => {
+                    engine.togglePause();
+                    onPauseChange(false);
+                    bump();
+                    window.setTimeout(() => {
+                      flickerOfferedRef.current = true;
+                      flickerRef.current?.offer({ challenge: 'clear_1' });
+                      setFlickerOfferOpen(true);
+                    }, 50);
+                  }}
+                >
+                  Debug: Trigger Flicker
+                </button>
+              </>
             )}
           </div>
         </div>

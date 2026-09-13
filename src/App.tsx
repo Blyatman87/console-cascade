@@ -21,7 +21,7 @@ import {
   resetProgress,
 } from './storage/localStorage';
 import { getTheme, applyThemeCssVars } from './themes';
-import { UNIVERSE_1 } from './data/universes';
+import { UNIVERSE_1, UNIVERSE_CATALOG, getUniverseByIndex } from './data/universes';
 import { getAbility } from './data/abilities';
 import { getPowerUp } from './data/powerups';
 import { storyTitleForLevelIndex, STORYBOARD_U1_BOSS } from './data/storyTitles';
@@ -36,6 +36,7 @@ import { PlayScreen } from './components/PlayScreen';
 import { Shop } from './components/Shop';
 import { StoryBlurb } from './components/StoryBlurb';
 import { CampaignMap } from './components/CampaignMap';
+import { UniverseSelect } from './components/UniverseSelect';
 import { MissionsPanel } from './components/MissionsPanel';
 import { AbilityPick } from './components/AbilityPick';
 import { GameOver } from './components/GameOver';
@@ -213,9 +214,17 @@ export default function App() {
     if (!e) return;
     const current = progressRef.current;
     if (isBoss) {
+      const unlocked = new Set(current.campaign.unlockedUniverses ?? [1]);
+      unlocked.add(1);
+      unlocked.add(2); // U1 boss unlocks U2
       const next: PlayerProgress = {
         ...current,
-        campaign: { ...current.campaign, bossDefeated: true, lives: e.state.lives },
+        campaign: {
+          ...current.campaign,
+          bossDefeated: true,
+          lives: e.state.lives,
+          unlockedUniverses: [...unlocked].sort((a, b) => a - b),
+        },
         cartridges: current.cartridges + 200,
       };
       next.inventory = { ...next.inventory, cartridges: next.cartridges };
@@ -349,7 +358,22 @@ export default function App() {
 
   const openCampaign = () => {
     setMode('campaign');
-    setTheme(getTheme('cartridge_dawn'));
+    setTheme(getTheme('modern'));
+    setScreen('universe_select');
+  };
+
+  const enterUniverse = (universeIndex: number) => {
+    const uni = getUniverseByIndex(universeIndex);
+    if (!uni) {
+      // Stub locked/unplayable — should not be clickable
+      return;
+    }
+    const next = {
+      ...progressRef.current,
+      campaign: { ...progressRef.current.campaign, universeIndex },
+    };
+    persist(next);
+    setTheme(getTheme(uni.themeId));
     setScreen('campaign_map');
   };
 
@@ -449,7 +473,17 @@ export default function App() {
       unlockedAbilities: unlocked,
       selectedAbilityId: ability.id,
     });
-    setScreen('campaign_map');
+    setScreen('universe_select');
+  };
+
+  const grantFlickerReward = (cartridges: number) => {
+    const current = progressRef.current;
+    const carts = current.cartridges + cartridges;
+    persist({
+      ...current,
+      cartridges: carts,
+      inventory: { ...current.inventory, cartridges: carts },
+    });
   };
 
   const retry = () => {
@@ -541,16 +575,28 @@ export default function App() {
         <MissionsPanel progress={progress} onBack={() => setScreen('menu')} />
       )}
 
+      {screen === 'universe_select' && (
+        <UniverseSelect
+          universes={UNIVERSE_CATALOG}
+          unlocked={progress.campaign.unlockedUniverses ?? [1]}
+          onSelect={enterUniverse}
+          onBack={() => {
+            setTheme(getTheme('modern'));
+            setScreen('menu');
+          }}
+        />
+      )}
+
       {screen === 'campaign_map' && (
         <CampaignMap
-          universe={UNIVERSE_1}
+          universe={getUniverseByIndex(progress.campaign.universeIndex) ?? UNIVERSE_1}
           progress={progress}
           onSelectLevel={beginCampaignLevel}
           onBoss={beginBoss}
           onShop={() => setScreen('shop')}
           onBack={() => {
             setTheme(getTheme('modern'));
-            setScreen('menu');
+            setScreen('universe_select');
           }}
         />
       )}
@@ -583,7 +629,7 @@ export default function App() {
       {screen === 'boss_victory' && (
         <StoryBlurb
           title="Maw Silenced"
-          blurb="The maze collapses into phosphor dust. Cartridge Dawn yields its first permanent gift — choose carefully."
+          blurb="The maze collapses into phosphor dust. Cartridge Dawn yields its first permanent gift — and 8-Bit Revival unlocks on the Universe Select. Choose carefully."
           chapter="Universe 1 Complete"
           continueLabel="Claim Ability"
           onContinue={() => setScreen('ability_pick')}
@@ -643,6 +689,10 @@ export default function App() {
           inputLocked={inputLocked || screen === 'level_result' || screen === 'wash'}
           clearToken={clearToken}
           debugMode={typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')}
+          flickerEnabled={
+            mode === 'campaign' && !isBoss && pendingLevelIndex >= 1
+          }
+          onFlickerReward={grantFlickerReward}
         />
       )}
 

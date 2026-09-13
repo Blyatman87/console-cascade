@@ -789,3 +789,148 @@ html[data-pixelated='true'] h2 {
 .settings-overlay {
   z-index: 35;
 }
+
+/* —— Era Flicker —— */
+.board-wrap[data-flicker='on'],
+.board-wrap[data-flicker='transition'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-era-phosphor, var(--cc-accent)) 55%, transparent),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.board-wrap[data-era='cartridge-dawn'] .game-board {
+  border-radius: 2px;
+  border-color: color-mix(in srgb, var(--cc-era-phosphor, #3dff6a) 40%, transparent);
+  image-rendering: pixelated;
+}
+
+.flicker-fx-canvas {
+  border-radius: inherit;
+}
+
+.flicker-offer {
+  z-index: 28;
+}
+
+.flicker-card h2 {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.flicker-challenge-hint {
+  font-family: ui-monospace, monospace;
+  color: var(--cc-accent);
+  margin: 0.5rem 0 1rem;
+}
+
+.flicker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.flicker-hud {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  pointer-events: auto;
+}
+
+.flicker-phase-chip,
+.flicker-challenge-chip {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--cc-panel-border);
+}
+
+.flicker-challenge-chip {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+}
+
+.tiny-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.flicker-toast {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  background: color-mix(in srgb, var(--cc-accent) 22%, var(--cc-panel));
+  border: 1px solid var(--cc-accent);
+  border-radius: var(--cc-radius);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  animation: toast-in 0.3s ease;
+}
+
+/* —— Universe Select —— */
+.universe-select .universe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.universe-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  text-align: left;
+  min-height: 120px;
+  background: color-mix(in srgb, var(--cc-panel) 90%, transparent);
+}
+
+.universe-card.featured {
+  border-color: var(--cc-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cc-accent) 35%, transparent);
+}
+
+.universe-card.locked {
+  opacity: 0.72;
+}
+
+.uni-index {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cc-accent);
+}
+
+.uni-name {
+  font-family: var(--cc-title-font);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.uni-era {
+  font-size: 0.8rem;
+  color: var(--cc-text-muted);
+}
+
+.uni-status {
+  margin-top: auto;
+  font-size: 0.85rem;
+  color: var(--cc-teal, var(--cc-accent-alt));
+}
+
+.universe-card.locked .uni-status {
+  color: var(--cc-text-muted);
+}
+
+.uni-hint {
+  font-size: 0.7rem;
+}

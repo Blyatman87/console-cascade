@@ -1,0 +1,88 @@
+{
+  "id": "mode-7-majesty",
+  "universeIndex": 3,
+  "displayName": "Mode-7 Majesty",
+  "homageNote": "SNES-era feel only — no trademarks in player-facing copy.",
+  "cssSelector": "[data-era=\"mode-7-majesty\"]",
+  "palette": {
+    "bg": "#0c1424",
+    "bgElevated": "#162038",
+    "gridLine": "#3a5080",
+    "accentGold": "#e8c86a",
+    "accentTeal": "#4ad4c8",
+    "hudChrome": "#2a3a5c",
+    "hudText": "#e8f0ff",
+    "danger": "#ff6a6a",
+    "ghostAlpha": 0.3
+  },
+  "pieces": {
+    "I": { "fill": "#4ad4c8", "outline": "#0c1424" },
+    "O": { "fill": "#e8c86a", "outline": "#0c1424" },
+    "T": { "fill": "#a78bfa", "outline": "#0c1424" },
+    "S": { "fill": "#6ade8a", "outline": "#0c1424" },
+    "Z": { "fill": "#f08080", "outline": "#0c1424" },
+    "J": { "fill": "#6a90e8", "outline": "#0c1424" },
+    "L": { "fill": "#e8a060", "outline": "#0c1424" }
+  },
+  "typography": {
+    "hudFamily": "ui-rounded, ui-sans-serif, system-ui, sans-serif",
+    "hudWeight": 600,
+    "hudLetterSpacing": "0.03em",
+    "scoreScale": 1.0
+  },
+  "geometry": {
+    "pixelSnap": 1,
+    "minoRadius": 2,
+    "gridInsetPx": 1,
+    "bloomPx": 4,
+    "outlinePx": 1,
+    "floorPerspective": true
+  },
+  "fxOverlay": {
+    "scanlineOpacity": 0.07,
+    "scanlineGapPx": 4,
+    "noiseOpacity": 0.04,
+    "phosphorBloom": 0.15,
+    "chromaticPx": 0.4,
+    "vignette": 0.16,
+    "curvature": 0.05,
+    "bloomTint": "rgba(232, 200, 106, 0.1)"
+  },
+  "motion": {
+    "enterStyle": "perspective-skew",
+    "exitStyle": "perspective-settle",
+    "decayTrailMs": 60,
+    "cameraShakePx": 0,
+    "skewDegMax": 3,
+    "rewardSparkle": true
+  },
+  "audio": {
+    "bed": "filtered-air",
+    "lock": "warm-chime",
+    "clear": "airy-whoosh",
+    "reward": "sparkle-chime",
+    "duckModernDb": -6
+  },
+  "readability": {
+    "minContrastPieceVsBg": 4.5,
+    "activePieceBoost": 1.12,
+    "neverBlurMinos": true,
+    "fxUnderStackOnly": true,
+    "perspectiveUnderBoardOnly": true
+  },
+  "cssVars": {
+    "--cc-bg": "{palette.bg}",
+    "--cc-grid": "{palette.gridLine}",
+    "--cc-hud": "{palette.hudText}",
+    "--cc-piece-I": "{pieces.I.fill}",
+    "--cc-piece-O": "{pieces.O.fill}",
+    "--cc-piece-T": "{pieces.T.fill}",
+    "--cc-piece-S": "{pieces.S.fill}",
+    "--cc-piece-Z": "{pieces.Z.fill}",
+    "--cc-piece-J": "{pieces.J.fill}",
+    "--cc-piece-L": "{pieces.L.fill}",
+    "--cc-ghost-a": "{palette.ghostAlpha}",
+    "--cc-bloom": "{geometry.bloomPx}px",
+    "--cc-scanline-a": "{fxOverlay.scanlineOpacity}"
+  }
+}

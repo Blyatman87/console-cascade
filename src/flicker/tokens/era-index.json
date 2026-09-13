@@ -1,0 +1,26 @@
+{
+  "universes": [
+    { "id": "cartridge-dawn", "index": 0, "tokenFile": "cartridge-dawn.json", "flickerFromLevel": 2, "status": "ready" },
+    { "id": "eight-bit-revival", "index": 1, "tokenFile": "eight-bit-revival.json", "flickerFromLevel": 2, "status": "ready" },
+    { "id": "sixteen-bit-rival", "index": 2, "tokenFile": "sixteen-bit-rival.json", "flickerFromLevel": 2, "status": "ready" },
+    { "id": "mode-7-majesty", "index": 3, "tokenFile": "mode-7-majesty.json", "flickerFromLevel": 2, "status": "ready" }
+  ],
+  "defaultTimingMs": {
+    "telegraph": 600,
+    "enter": 450,
+    "holdEasy": 5500,
+    "holdNormal": 3500,
+    "holdHard": 2800,
+    "exit": 550
+  },
+  "prototypeGate": {
+    "universe": "cartridge-dawn",
+    "minLevel": 2,
+    "defaultChallengeEasy": "survive",
+    "notes": "U1 L2+ for first integrate. Eras 2–4 tokens ready for swap-in."
+  },
+  "fxOverlay": {
+    "file": "../flicker/FxOverlay.ts",
+    "notes": "Single canvas; setIntensity from FlickerController; paramsFromEraTokens(token.fxOverlay)."
+  }
+}

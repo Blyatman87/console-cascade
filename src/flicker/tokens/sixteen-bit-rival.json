@@ -1,0 +1,87 @@
+{
+  "id": "sixteen-bit-rival",
+  "universeIndex": 2,
+  "displayName": "16-Bit Rival",
+  "homageNote": "Genesis-era feel only — no trademarks in player-facing copy.",
+  "cssSelector": "[data-era=\"sixteen-bit-rival\"]",
+  "palette": {
+    "bg": "#12081a",
+    "bgElevated": "#1e1030",
+    "gridLine": "#4a2860",
+    "accentHot": "#ff2a6a",
+    "accentCyan": "#2ee6ff",
+    "hudChrome": "#3a1850",
+    "hudText": "#ffe8ff",
+    "danger": "#ff2040",
+    "ghostAlpha": 0.32
+  },
+  "pieces": {
+    "I": { "fill": "#2ee6ff", "outline": "#12081a" },
+    "O": { "fill": "#ffe020", "outline": "#12081a" },
+    "T": { "fill": "#c44cff", "outline": "#12081a" },
+    "S": { "fill": "#20e060", "outline": "#12081a" },
+    "Z": { "fill": "#ff2a6a", "outline": "#12081a" },
+    "J": { "fill": "#4060ff", "outline": "#12081a" },
+    "L": { "fill": "#ff8030", "outline": "#12081a" }
+  },
+  "typography": {
+    "hudFamily": "ui-sans-serif, system-ui, sans-serif",
+    "hudWeight": 800,
+    "hudLetterSpacing": "0.04em",
+    "scoreScale": 1.08
+  },
+  "geometry": {
+    "pixelSnap": 1,
+    "minoRadius": 1,
+    "gridInsetPx": 1,
+    "bloomPx": 2,
+    "outlinePx": 2,
+    "ditherHint": true
+  },
+  "fxOverlay": {
+    "scanlineOpacity": 0.08,
+    "scanlineGapPx": 3,
+    "noiseOpacity": 0.05,
+    "phosphorBloom": 0.1,
+    "chromaticPx": 1.2,
+    "vignette": 0.18,
+    "curvature": 0.02,
+    "bloomTint": "rgba(255, 42, 106, 0.08)"
+  },
+  "motion": {
+    "enterStyle": "stripe-wipe-h",
+    "exitStyle": "stripe-wipe-h-reverse",
+    "decayTrailMs": 40,
+    "cameraShakePx": 0,
+    "clearPopScale": 1.08
+  },
+  "audio": {
+    "bed": "bright-noise",
+    "lock": "saw-stab",
+    "clear": "snare-brass",
+    "reward": "fanfare-short",
+    "duckModernDb": -9
+  },
+  "readability": {
+    "minContrastPieceVsBg": 4.5,
+    "activePieceBoost": 1.2,
+    "neverBlurMinos": true,
+    "fxUnderStackOnly": true,
+    "thickOutlines": true
+  },
+  "cssVars": {
+    "--cc-bg": "{palette.bg}",
+    "--cc-grid": "{palette.gridLine}",
+    "--cc-hud": "{palette.hudText}",
+    "--cc-piece-I": "{pieces.I.fill}",
+    "--cc-piece-O": "{pieces.O.fill}",
+    "--cc-piece-T": "{pieces.T.fill}",
+    "--cc-piece-S": "{pieces.S.fill}",
+    "--cc-piece-Z": "{pieces.Z.fill}",
+    "--cc-piece-J": "{pieces.J.fill}",
+    "--cc-piece-L": "{pieces.L.fill}",
+    "--cc-ghost-a": "{palette.ghostAlpha}",
+    "--cc-bloom": "{geometry.bloomPx}px",
+    "--cc-scanline-a": "{fxOverlay.scanlineOpacity}"
+  }
+}
