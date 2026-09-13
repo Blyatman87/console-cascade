@@ -22,7 +22,8 @@ export function MainMenu({
   return (
     <div className="screen menu-screen">
       <div className="menu-hero">
-        <p className="eyebrow">Cascade Protocol // MVP</p>
+        <div className="dawn-band" aria-hidden="true" />
+      <p className="eyebrow">Cascade Protocol // MVP</p>
         <h1 className="game-title">Console Cascade</h1>
         <p className="tagline">
           Stack, clear, and cascade through eras of living-room legends — homage only, forever.

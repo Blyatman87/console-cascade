@@ -34,6 +34,8 @@ export function GameBoard({ board, active, ghost, theme, cellSize = 28 }: Props)
         height: ROWS * cellSize,
         background: theme.boardBg,
         borderColor: theme.panelBorder,
+        ['--cell-size' as string]: `${cellSize}px`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -8px 24px rgba(0,0,0,0.35)',
       }}
     >
       {Array.from({ length: ROWS }, (_, vr) => {

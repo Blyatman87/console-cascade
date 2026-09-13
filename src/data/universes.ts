@@ -15,9 +15,9 @@ export const UNIVERSE_1: Universe = {
       index: 1,
       title: 'Dig-Site Jungle Canopy',
       storyBlurb:
-        'Vines drip over a half-buried console dig. Clear the canopy debris before the vines reclaim the board.',
+        'Vines drip over a half-buried console dig. Clear a few lines — this is your calm first cascade.',
       startLevel: 0,
-      targetLines: 8,
+      targetLines: 4,
       garbageRows: 0,
       disruption: 'none',
       rewardCartridges: 25,
