@@ -13,11 +13,11 @@ export const UNIVERSE_1: Universe = {
     {
       id: 'u1_l1',
       index: 1,
-      title: 'Dig-Site Jungle Canopy',
+      title: 'Woodgrain Warmup',
       storyBlurb:
         'Vines drip over a half-buried console dig. Clear a few lines — this is your calm first cascade.',
       startLevel: 0,
-      targetLines: 4,
+      targetLines: 3,
       garbageRows: 0,
       disruption: 'none',
       rewardCartridges: 25,

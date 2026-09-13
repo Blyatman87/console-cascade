@@ -13,57 +13,49 @@ export interface KeyHandlers {
   onHold?: () => void;
   onPause?: () => void;
   onMute?: () => void;
-  /** When false, gameplay actions ignored (pause/mute still optional). */
   enabled?: boolean;
-  /** Allow pause/mute even when gameplay disabled. */
   allowMeta?: boolean;
   bindings: ControlBindings;
-  /** Bump to clear held keys + start ~100ms input ignore window. */
   clearToken?: number;
 }
 
 const INPUT_CLEAR_MS = 100;
+const DAS_MS = 167;
+const ARR_MS = 33;
 
 export function useKeyboard(handlers: KeyHandlers) {
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
-  const downRef = useRef(ignoreSet());
+  const downRef = useRef(new Set<string>());
   const ignoreUntilRef = useRef(0);
-  const softDropCodesRef = useRef<Set<string>>(new Set());
-
-  function ignoreSet() {
-    return new Set<string>();
-  }
+  const softDropCodesRef = useRef(new Set<string>());
+  const moveDirRef = useRef<-1 | 0 | 1>(0);
+  const dasUntilRef = useRef(0);
+  const nextArrRef = useRef(0);
 
   useEffect(() => {
-    // Clear held keys + brief input ignore on play focus / level start / overlay close
-    downRef.current = ignoreSet();
+    downRef.current = new Set();
     softDropCodesRef.current = new Set();
+    moveDirRef.current = 0;
     ignoreUntilRef.current = performance.now() + INPUT_CLEAR_MS;
     handlersRef.current.onSoftDropEnd?.();
   }, [handlers.clearToken]);
 
   useEffect(() => {
-    const fire = (action: ReturnType<typeof actionForCode>, isRepeat: boolean) => {
+    const fireMetaOrEdge = (
+      action: NonNullable<ReturnType<typeof actionForCode>>,
+      isRepeat: boolean,
+    ) => {
       const h = handlersRef.current;
-      if (!action) return;
-      const gameplay =
-        action !== 'pause' && action !== 'mute';
+      const gameplay = action !== 'pause' && action !== 'mute';
       if (gameplay && h.enabled === false) return;
       if (!gameplay && h.enabled === false && h.allowMeta === false) return;
 
       switch (action) {
-        case 'moveLeft':
-          h.onLeft?.();
-          break;
-        case 'moveRight':
-          h.onRight?.();
-          break;
         case 'softDrop':
           h.onSoftDropStart?.();
           break;
         case 'hardDrop':
-          // Edge-trigger only — no key repeat
           if (!isRepeat) h.onHardDrop?.();
           break;
         case 'rotateCW':
@@ -81,7 +73,18 @@ export function useKeyboard(handlers: KeyHandlers) {
         case 'mute':
           if (!isRepeat) h.onMute?.();
           break;
+        default:
+          break;
       }
+    };
+
+    const syncMoveDir = () => {
+      const h = handlersRef.current;
+      const left = codesForAction(h.bindings, 'moveLeft').some((c) => downRef.current.has(c));
+      const right = codesForAction(h.bindings, 'moveRight').some((c) => downRef.current.has(c));
+      if (left && !right) moveDirRef.current = -1;
+      else if (right && !left) moveDirRef.current = 1;
+      else moveDirRef.current = 0;
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -111,51 +114,74 @@ export function useKeyboard(handlers: KeyHandlers) {
         softDropCodesRef.current.add(e.code);
       }
 
-      // Hard drop: edge only — if already down (incl. OS repeat), skip
       if (action === 'hardDrop') {
-        if (downRef.current.has(e.code) || e.repeat) {
-          e.preventDefault();
-          return;
-        }
+        if (downRef.current.has(e.code) || e.repeat) return;
         downRef.current.add(e.code);
-        fire(action, false);
+        fireMetaOrEdge(action, false);
         return;
       }
 
-      // Movement / soft drop may use OS repeat for DAS-feel
+      if (action === 'moveLeft' || action === 'moveRight') {
+        if (downRef.current.has(e.code)) return; // DAS loop handles repeat
+        downRef.current.add(e.code);
+        if (h.enabled === false) return;
+        syncMoveDir();
+        if (moveDirRef.current === -1) h.onLeft?.();
+        if (moveDirRef.current === 1) h.onRight?.();
+        dasUntilRef.current = performance.now() + DAS_MS;
+        nextArrRef.current = dasUntilRef.current;
+        return;
+      }
+
       if (downRef.current.has(e.code)) {
-        if (action === 'moveLeft' || action === 'moveRight' || action === 'softDrop') {
-          fire(action, true);
-        }
+        if (action === 'softDrop') fireMetaOrEdge(action, true);
         return;
       }
       downRef.current.add(e.code);
-      fire(action, e.repeat);
+      fireMetaOrEdge(action, e.repeat);
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
       const h = handlersRef.current;
       downRef.current.delete(e.code);
-      // Soft drop ends on keyup of any bound soft-drop key
       const softCodes = codesForAction(h.bindings, 'softDrop');
       if (softCodes.includes(e.code)) {
         softDropCodesRef.current.delete(e.code);
-        if (softDropCodesRef.current.size === 0) {
-          h.onSoftDropEnd?.();
-        }
+        if (softDropCodesRef.current.size === 0) h.onSoftDropEnd?.();
+      }
+      syncMoveDir();
+      if (moveDirRef.current === 0) {
+        dasUntilRef.current = 0;
+        nextArrRef.current = 0;
       }
     };
 
     const onBlur = () => {
-      downRef.current = ignoreSet();
+      downRef.current = new Set();
       softDropCodesRef.current = new Set();
+      moveDirRef.current = 0;
       handlersRef.current.onSoftDropEnd?.();
     };
+
+    let raf = 0;
+    const tick = (now: number) => {
+      const h = handlersRef.current;
+      if (h.enabled !== false && moveDirRef.current !== 0 && now >= dasUntilRef.current) {
+        if (now >= nextArrRef.current) {
+          if (moveDirRef.current === -1) h.onLeft?.();
+          if (moveDirRef.current === 1) h.onRight?.();
+          nextArrRef.current = now + ARR_MS;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

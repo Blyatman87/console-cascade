@@ -642,6 +642,7 @@ export default function App() {
           onDismissToast={() => setMissionToast(null)}
           inputLocked={inputLocked || screen === 'level_result' || screen === 'wash'}
           clearToken={clearToken}
+          debugMode={typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')}
         />
       )}
 

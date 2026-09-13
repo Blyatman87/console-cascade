@@ -42,6 +42,8 @@ interface Props {
   /** When true, freeze input (level complete sting/result handled by parent). */
   inputLocked?: boolean;
   clearToken: number;
+  /** Show QA force-complete (URL ?debug=1). */
+  debugMode?: boolean;
 }
 
 export function PlayScreen({
@@ -70,6 +72,7 @@ export function PlayScreen({
   onDismissToast,
   inputLocked = false,
   clearToken,
+  debugMode = false,
 }: Props) {
   const [cellSize, setCellSize] = useState(28);
   const [showSettings, setShowSettings] = useState(false);
@@ -397,6 +400,18 @@ export function PlayScreen({
             <button type="button" className="menu-btn ghost" onClick={onExitToMenu}>
               Quit to Menu
             </button>
+            {debugMode && (
+              <button
+                type="button"
+                className="menu-btn ghost"
+                onClick={() => {
+                  engine.forceLevelComplete();
+                  bump();
+                }}
+              >
+                Debug: Complete Level
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -94,6 +94,9 @@ export class GameEngine {
   constructor(config: EngineConfig) {
     this.config = config;
     this.bag = new BagRandomizer();
+    if (config.mode === 'campaign' && config.startLevel === 0 && (config.targetLines ?? 99) <= 5) {
+      this.bag.enableFairTutorialOpener();
+    }
     const queueSize = Math.max(3, config.queueSize);
     const queue: PieceType[] = [];
     for (let i = 0; i < queueSize; i++) queue.push(this.bag.next());
@@ -460,6 +463,20 @@ export class GameEngine {
     }
     this.state.lastEvent = { type: 'powerup_used', id };
     return true;
+  }
+
+  /** Debug / QA: instantly win the level (campaign target). */
+  forceLevelComplete(): void {
+    if (this.state.gameOver || this.state.levelComplete) return;
+    if (this.config.targetLines !== null) {
+      this.state.stats.lines = Math.max(this.state.stats.lines, this.config.targetLines);
+    } else {
+      this.state.stats.lines = Math.max(this.state.stats.lines, 1);
+    }
+    this.state.paused = false;
+    this.state.levelComplete = true;
+    this.state.active = null;
+    this.state.lastEvent = { type: 'level_complete' };
   }
 
   getGhost(): ActivePiece | null {

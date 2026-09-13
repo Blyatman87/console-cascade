@@ -1,0 +1,9 @@
+{
+  "publishes": {
+    "astral-sage-wzg4": {
+      "siteUrl": "https://astral-sage-wzg4.here.now/",
+      "versionId": "01M2CCYS6KCRKSSD46DWWVKA4T",
+      "path": "/workspace/console-cascade-app/dist"
+    }
+  }
+}
