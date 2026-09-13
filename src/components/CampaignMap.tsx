@@ -67,7 +67,7 @@ export function CampaignMap({
           Shop
         </button>
         <button type="button" className="menu-btn ghost" onClick={onBack}>
-          Main Menu
+          Universe Select
         </button>
       </div>
     </div>
