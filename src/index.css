@@ -280,6 +280,8 @@ button:disabled {
 .board-wrap {
   position: relative;
   justify-self: center;
+  overflow: visible;
+  margin-top: 2rem; /* room for flicker HUD above matrix */
 }
 
 .game-board {
@@ -803,8 +805,18 @@ html[data-pixelated='true'] h2 {
   image-rendering: pixelated;
 }
 
+.board-wrap[data-era='cartridge-dawn'] .board-cell.filled:not(.ghost) {
+  border-radius: 0;
+}
+
+.board-wrap[data-era] .game-board {
+  background: var(--cc-era-bg, var(--cc-board-bg)) !important;
+}
+
 .flicker-fx-canvas {
   border-radius: inherit;
+  z-index: 4;
+  pointer-events: none;
 }
 
 .flicker-offer {
@@ -828,16 +840,22 @@ html[data-pixelated='true'] h2 {
   gap: 0.5rem;
 }
 
+/* HUD sits ABOVE the 10×20 matrix (not over cells) */
 .flicker-hud {
   position: absolute;
   left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  z-index: 5;
+  top: 0;
+  bottom: auto;
+  transform: translate(-50%, calc(-100% - 10px));
+  z-index: 8;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   pointer-events: auto;
+  flex-wrap: wrap;
+  max-width: min(100vw, 420px);
+  white-space: nowrap;
 }
 
 .flicker-phase-chip,
@@ -847,8 +865,9 @@ html[data-pixelated='true'] h2 {
   letter-spacing: 0.08em;
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.72);
   border: 1px solid var(--cc-panel-border);
+  backdrop-filter: blur(4px);
 }
 
 .flicker-challenge-chip {
@@ -863,7 +882,7 @@ html[data-pixelated='true'] h2 {
 
 .flicker-toast {
   position: absolute;
-  top: 10px;
+  top: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 6;
@@ -874,6 +893,51 @@ html[data-pixelated='true'] h2 {
   font-size: 0.85rem;
   white-space: nowrap;
   animation: toast-in 0.3s ease;
+  pointer-events: none;
+}
+
+/* 0.6s telegraph: edge pulse + era glyph before Enter */
+.flicker-telegraph {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--cc-era-phosphor, var(--cc-accent)) 70%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--cc-era-phosphor, var(--cc-accent)) 25%, transparent);
+  animation: flicker-edge-pulse 0.6s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flicker-glyph {
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  color: var(--cc-era-phosphor, var(--cc-accent));
+  text-shadow: 0 0 12px color-mix(in srgb, var(--cc-era-phosphor, var(--cc-accent)) 55%, transparent);
+  animation: flicker-glyph-in 0.6s ease-out;
+  opacity: 0.9;
+  line-height: 1;
+}
+
+@keyframes flicker-edge-pulse {
+  0% { opacity: 0; box-shadow: inset 0 0 0 0 transparent; }
+  35% { opacity: 1; }
+  100% { opacity: 0.85; }
+}
+
+@keyframes flicker-glyph-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  40% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flicker-telegraph,
+  .flicker-glyph {
+    animation: none;
+  }
 }
 
 /* —— Universe Select —— */

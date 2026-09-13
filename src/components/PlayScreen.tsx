@@ -365,6 +365,17 @@ export function PlayScreen({
             height={ROWS * cellSize}
             onReward={(n) => onFlickerReward?.(n)}
             onUiPhaseChange={(phase) => setFlickerOfferOpen(phase === 'offer')}
+            onRestoreTheme={() => {
+              // Re-apply current play theme CSS vars after era flicker clears
+              const root = document.documentElement;
+              root.style.setProperty('--cc-board-bg', theme.boardBg);
+              root.style.setProperty('--cc-grid', theme.gridLine);
+              root.style.setProperty('--cc-ghost', theme.ghost);
+              root.style.setProperty('--cc-garbage', theme.garbage);
+              (Object.keys(theme.piece) as (keyof typeof theme.piece)[]).forEach((k) => {
+                root.style.setProperty(`--cc-piece-${k}`, theme.piece[k]);
+              });
+            }}
           />
           {(slowActive || lockActive) && (
             <div className="effect-banner">

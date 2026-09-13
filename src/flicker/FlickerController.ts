@@ -206,7 +206,7 @@ export class FlickerController {
 
   get canSkip(): boolean {
     return (
-      !!this.cfg?.skippableAfterEnter !== false &&
+      this.cfg?.skippableAfterEnter !== false &&
       this.enterComplete &&
       (this.phase === "hold" || this.phase === "exit")
     );

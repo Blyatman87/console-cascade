@@ -32,7 +32,7 @@ export function GameBoard({ board, active, ghost, theme, cellSize = 28 }: Props)
       style={{
         width: COLS * cellSize,
         height: ROWS * cellSize,
-        background: theme.boardBg,
+        background: `var(--cc-era-bg, var(--cc-board-bg, ${theme.boardBg}))`,
         borderColor: theme.panelBorder,
         ['--cell-size' as string]: `${cellSize}px`,
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -8px 24px rgba(0,0,0,0.35)',
@@ -49,7 +49,7 @@ export function GameBoard({ board, active, ghost, theme, cellSize = 28 }: Props)
           } else if (ghostSet.has(key) && color === 'empty') {
             isGhost = true;
           }
-          const bg =
+          const fallback =
             color === 'empty'
               ? isGhost
                 ? theme.ghost
@@ -57,6 +57,15 @@ export function GameBoard({ board, active, ghost, theme, cellSize = 28 }: Props)
               : color === 'garbage'
                 ? theme.garbage
                 : theme.piece[color as keyof typeof theme.piece] ?? theme.garbage;
+
+          const bg =
+            color === 'empty'
+              ? isGhost
+                ? `var(--cc-ghost, ${theme.ghost})`
+                : 'transparent'
+              : color === 'garbage'
+                ? `var(--cc-garbage, ${theme.garbage})`
+                : `var(--cc-piece-${color}, ${fallback})`;
 
           return (
             <div
@@ -69,7 +78,7 @@ export function GameBoard({ board, active, ghost, theme, cellSize = 28 }: Props)
                 boxShadow:
                   color !== 'empty' && !isGhost
                     ? 'inset 0 0 0 1px rgba(255,255,255,0.15)'
-                    : `inset 0 0 0 1px ${theme.gridLine}`,
+                    : `inset 0 0 0 1px var(--cc-era-grid, var(--cc-grid, ${theme.gridLine}))`,
               }}
             />
           );
