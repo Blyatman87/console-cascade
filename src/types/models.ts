@@ -141,6 +141,9 @@ export interface PlayerProgress {
   };
   settings: {
     muted: boolean;
+    sfxVolume: number;
+    musicVolume: number;
+    seenControlsOverlay: boolean;
   };
 }
 
@@ -165,7 +168,9 @@ export type AppScreen =
   | 'boss_victory'
   | 'ability_pick'
   | 'missions'
-  | 'campaign_map';
+  | 'campaign_map'
+  | 'level_result'
+  | 'wash';
 
 export interface ThemePalette {
   id: string;

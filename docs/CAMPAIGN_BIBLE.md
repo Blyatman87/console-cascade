@@ -35,3 +35,5 @@ Level themes (homage titles):
 8. Canyon River Run *(River Raid)*
 9. Fly-Swatter Grid *(Yar’s Revenge)*
 10. Segment Garden Crawl *(Centipede)*
+
+Full per-universe bosses/themes: see Research brief in chat (2026-09-11).

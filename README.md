@@ -32,17 +32,20 @@ npm run preview
 
 ## Controls
 
-| Action | Keyboard | Touch |
-|--------|----------|-------|
-| Move | ← → / A D | ◀ ▶ |
-| Soft drop | ↓ / S (hold) | ▼ (hold) |
-| Hard drop | Space | ⬇ |
-| Rotate CW | ↑ / W / X | ↻ |
-| Rotate CCW | Z / Ctrl | ↺ |
-| Hold | C / Shift | Hold |
-| Pause | P / Esc | ❚❚ |
-| Mute | M | 🔊 |
-| Power-ups | 1–6 | Power-up bar |
+Remappable (Settings from menu or pause). Stored in `localStorage` key `cc.controls.v1`. Dual bind primary + alt.
+
+| Action | Default primary | Default alt | Touch |
+|--------|-----------------|-------------|-------|
+| Move Left / Right | ← → | A D | ◀ ▶ |
+| Soft drop | ↓ | S (hold; ends on keyup) | ▼ (hold) |
+| Hard drop | Space (edge-trigger) | — | ⬇ |
+| Rotate CW / CCW | ↑ / Z | W / Ctrl | ↻ ↺ |
+| Hold | C | Shift | Hold |
+| Pause | P | Esc | ❚❚ |
+| Mute | M | — | 🔊 |
+| Power-ups | 1–6 | | Power-up bar |
+
+To free Space (e.g. sticky chat hotkey): **Settings → Hard Drop → click Space → press a new key**.
 
 ## Power-ups (≥5 wired)
 

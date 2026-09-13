@@ -24,6 +24,13 @@ import { getTheme, applyThemeCssVars } from './themes';
 import { UNIVERSE_1 } from './data/universes';
 import { getAbility } from './data/abilities';
 import { getPowerUp } from './data/powerups';
+import { storyTitleForLevelIndex, STORYBOARD_U1_BOSS } from './data/storyTitles';
+import {
+  type ControlBindings,
+  loadBindings,
+  saveBindings,
+} from './input/controls';
+import { audio } from './audio/audio';
 import { MainMenu } from './components/MainMenu';
 import { PlayScreen } from './components/PlayScreen';
 import { Shop } from './components/Shop';
@@ -32,6 +39,13 @@ import { CampaignMap } from './components/CampaignMap';
 import { MissionsPanel } from './components/MissionsPanel';
 import { AbilityPick } from './components/AbilityPick';
 import { GameOver } from './components/GameOver';
+import { SettingsPanel } from './components/SettingsPanel';
+import { LevelResult } from './components/LevelResult';
+
+const SPAWN_DELAY_MS = 400;
+const STING_MS_MIN = 1200;
+const STING_MS_MAX = 1800;
+const WASH_MS = 450;
 
 function abilityExtras(progress: PlayerProgress) {
   const ability = progress.selectedAbilityId
@@ -43,7 +57,19 @@ function abilityExtras(progress: PlayerProgress) {
     scoreMultiplier: ability?.effect === 'score_multiplier' ? 1.25 : 1,
     startShield: ability?.effect === 'start_shield' ? 1 : 0,
     queueSize: ability?.effect === 'wider_queue' ? 6 : 5,
+    spawnDelayMs: SPAWN_DELAY_MS,
   };
+}
+
+function easyMissionToast(levelIndex: number): string | null {
+  // L1 none; L2+ easy side-mission tip
+  if (levelIndex < 1) return null;
+  const tips = [
+    'Tip: Clear 20 lines in High Score for Warm-Up Sweep (+life).',
+    'Tip: Hit 5,000 points in High Score for Arcade Ambition.',
+    'Tip: Land three quads in one High Score run for Quad Cadet.',
+  ];
+  return tips[(levelIndex - 1) % tips.length];
 }
 
 export default function App() {
@@ -53,152 +79,244 @@ export default function App() {
   const [theme, setTheme] = useState<ThemePalette>(() => getTheme('modern'));
   const [engine, setEngine] = useState<GameEngine | null>(null);
   const [tick, setTick] = useState(0);
-  const [story, setStory] = useState<{ title: string; blurb: string; chapter?: string } | null>(null);
+  const [story, setStory] = useState<{ title: string; blurb: string; chapter?: string } | null>(
+    null,
+  );
   const [pendingLevelIndex, setPendingLevelIndex] = useState(0);
   const [isBoss, setIsBoss] = useState(false);
   const [missionNotes, setMissionNotes] = useState<string[]>([]);
   const [gameOverMsg, setGameOverMsg] = useState<string | undefined>();
+  const [bindings, setBindings] = useState<ControlBindings>(() => loadBindings());
+  const [showMenuSettings, setShowMenuSettings] = useState(false);
+  const [clearToken, setClearToken] = useState(0);
+  const [missionToast, setMissionToast] = useState<string | null>(null);
+  const [resultReady, setResultReady] = useState(false);
+  const [washing, setWashing] = useState(false);
+  const [inputLocked, setInputLocked] = useState(false);
+
   const handledEndRef = useRef(false);
   const engineRef = useRef<GameEngine | null>(null);
   const progressRef = useRef(progress);
   progressRef.current = progress;
+  const stingTimerRef = useRef<number | null>(null);
+  const washTimerRef = useRef<number | null>(null);
 
   const persist = useCallback((next: PlayerProgress) => {
     setProgress(next);
     saveProgress(next);
   }, []);
 
+  const bumpClear = useCallback(() => setClearToken((t) => t + 1), []);
+
   useEffect(() => {
     applyThemeCssVars(theme);
   }, [theme]);
 
-  const finishRun = useCallback(
-    (won: boolean) => {
-      const e = engineRef.current;
-      if (!e || handledEndRef.current) return;
-      handledEndRef.current = true;
-      const stats = { ...e.state.stats };
-      const quadsApprox = Math.floor(stats.lines / 4);
-      const current = progressRef.current;
+  useEffect(() => {
+    audio.setMuted(progress.settings.muted);
+    audio.setSfxVolume(progress.settings.sfxVolume);
+    audio.setMusicVolume(progress.settings.musicVolume);
+  }, [progress.settings]);
 
-      if (mode === 'highscore') {
-        let next = recordHighScoreRun(current, {
-          score: stats.score,
-          lines: stats.lines,
-          level: stats.level,
-          mode: 'highscore',
-        });
-        next = {
-          ...next,
-          highScore: {
-            ...next.highScore,
-            lives: Math.max(0, next.highScore.lives - (won ? 0 : 1)),
-          },
-        };
-        const { missions, newlyCompleted } = updateMissionsFromRun(next.highScore.missions, {
-          score: stats.score,
-          lines: stats.lines,
-          quadsApprox,
-          timeMs: stats.timeMs,
-        });
-        const notes: string[] = [];
-        let carts = next.cartridges;
-        let lives = next.highScore.lives;
-        const consumables = { ...next.inventory.consumables };
-        for (const m of newlyCompleted) {
-          notes.push(`Mission complete: ${m.title}`);
-          lives += m.rewardLives;
-          if (m.rewardCartridges) carts += m.rewardCartridges;
-          if (m.rewardPowerUp) {
-            consumables[m.rewardPowerUp] = (consumables[m.rewardPowerUp] ?? 0) + 1;
-          }
-        }
-        next = {
-          ...next,
-          cartridges: carts,
-          inventory: { ...next.inventory, consumables, cartridges: carts },
-          highScore: { ...next.highScore, missions, lives },
-        };
-        persist(next);
-        setMissionNotes(notes);
-        setGameOverMsg(undefined);
-        setScreen('gameover');
-        return;
-      }
+  const syncAudioSettings = (patch: Partial<PlayerProgress['settings']>) => {
+    const next = {
+      ...progressRef.current,
+      settings: { ...progressRef.current.settings, ...patch },
+    };
+    persist(next);
+  };
 
-      if (mode === 'sandbox') {
-        const next = recordHighScoreRun(current, {
-          score: stats.score,
-          lines: stats.lines,
-          level: stats.level,
-          mode: 'sandbox',
-        });
-        persist(next);
-        setMissionNotes([]);
-        setGameOverMsg('Left sandbox');
-        setScreen('gameover');
-        return;
-      }
+  const finishRunLose = useCallback(() => {
+    const e = engineRef.current;
+    if (!e || handledEndRef.current) return;
+    handledEndRef.current = true;
+    setInputLocked(false);
+    const stats = { ...e.state.stats };
+    const quadsApprox = Math.floor(stats.lines / 4);
+    const current = progressRef.current;
 
-      // Campaign
-      if (won) {
-        if (isBoss) {
-          const next: PlayerProgress = {
-            ...current,
-            campaign: { ...current.campaign, bossDefeated: true, lives: e.state.lives },
-            cartridges: current.cartridges + 200,
-          };
-          next.inventory = { ...next.inventory, cartridges: next.cartridges };
-          persist(next);
-          setScreen('boss_victory');
-          return;
-        }
-        const lvl = UNIVERSE_1.levels[pendingLevelIndex];
-        const completed = new Set(current.campaign.completedLevels);
-        completed.add(lvl.id);
-        const nextIndex = Math.max(current.campaign.levelIndex, pendingLevelIndex + 1);
-        const next: PlayerProgress = {
-          ...current,
-          cartridges: current.cartridges + lvl.rewardCartridges,
-          campaign: {
-            ...current.campaign,
-            completedLevels: [...completed],
-            levelIndex: nextIndex,
-            lives: e.state.lives,
-          },
-        };
-        next.inventory = { ...next.inventory, cartridges: next.cartridges };
-        persist(next);
-        setScreen('shop');
-        return;
-      }
-
-      const next: PlayerProgress = {
-        ...current,
-        campaign: {
-          ...current.campaign,
-          lives: Math.max(0, e.state.lives),
+    if (mode === 'highscore') {
+      let next = recordHighScoreRun(current, {
+        score: stats.score,
+        lines: stats.lines,
+        level: stats.level,
+        mode: 'highscore',
+      });
+      next = {
+        ...next,
+        highScore: {
+          ...next.highScore,
+          lives: Math.max(0, next.highScore.lives - 1),
         },
       };
+      const { missions, newlyCompleted } = updateMissionsFromRun(next.highScore.missions, {
+        score: stats.score,
+        lines: stats.lines,
+        quadsApprox,
+        timeMs: stats.timeMs,
+      });
+      const notes: string[] = [];
+      let carts = next.cartridges;
+      let lives = next.highScore.lives;
+      const consumables = { ...next.inventory.consumables };
+      for (const m of newlyCompleted) {
+        notes.push(`Mission complete: ${m.title}`);
+        lives += m.rewardLives;
+        if (m.rewardCartridges) carts += m.rewardCartridges;
+        if (m.rewardPowerUp) {
+          consumables[m.rewardPowerUp] = (consumables[m.rewardPowerUp] ?? 0) + 1;
+        }
+      }
+      next = {
+        ...next,
+        cartridges: carts,
+        inventory: { ...next.inventory, consumables, cartridges: carts },
+        highScore: { ...next.highScore, missions, lives },
+      };
       persist(next);
-      setGameOverMsg('Level failed');
-      setMissionNotes([]);
+      setMissionNotes(notes);
+      setGameOverMsg(undefined);
       setScreen('gameover');
-    },
-    [mode, isBoss, pendingLevelIndex, persist],
-  );
+      return;
+    }
+
+    if (mode === 'sandbox') {
+      const next = recordHighScoreRun(current, {
+        score: stats.score,
+        lines: stats.lines,
+        level: stats.level,
+        mode: 'sandbox',
+      });
+      persist(next);
+      setMissionNotes([]);
+      setGameOverMsg('Left sandbox');
+      setScreen('gameover');
+      return;
+    }
+
+    const next: PlayerProgress = {
+      ...current,
+      campaign: {
+        ...current.campaign,
+        lives: Math.max(0, e.state.lives),
+      },
+    };
+    persist(next);
+    setGameOverMsg('Level failed');
+    setMissionNotes([]);
+    setScreen('gameover');
+  }, [mode, persist]);
+
+  /** Persist campaign win rewards (called when entering result). */
+  const applyCampaignWin = useCallback(() => {
+    const e = engineRef.current;
+    if (!e) return;
+    const current = progressRef.current;
+    if (isBoss) {
+      const next: PlayerProgress = {
+        ...current,
+        campaign: { ...current.campaign, bossDefeated: true, lives: e.state.lives },
+        cartridges: current.cartridges + 200,
+      };
+      next.inventory = { ...next.inventory, cartridges: next.cartridges };
+      persist(next);
+      return;
+    }
+    const lvl = UNIVERSE_1.levels[pendingLevelIndex];
+    const completed = new Set(current.campaign.completedLevels);
+    completed.add(lvl.id);
+    const nextIndex = Math.max(current.campaign.levelIndex, pendingLevelIndex + 1);
+    const next: PlayerProgress = {
+      ...current,
+      cartridges: current.cartridges + lvl.rewardCartridges,
+      campaign: {
+        ...current.campaign,
+        completedLevels: [...completed],
+        levelIndex: nextIndex,
+        lives: e.state.lives,
+      },
+    };
+    next.inventory = { ...next.inventory, cartridges: next.cartridges };
+    persist(next);
+  }, [isBoss, pendingLevelIndex, persist]);
+
+  const beginLevelCompleteFlow = useCallback(() => {
+    if (handledEndRef.current) return;
+    handledEndRef.current = true;
+    setInputLocked(true);
+    bumpClear();
+    engineRef.current?.setSoftDrop(false);
+
+    if (mode === 'sandbox' || mode === 'highscore') {
+      // Non-campaign: treat as run end without result card chain
+      handledEndRef.current = false;
+      setInputLocked(false);
+      // re-enter finish as win for highscore? sandbox/HS don't "win" levels typically
+      // levelComplete only fires with targetLines — HS/sandbox have null target
+      finishRunLose();
+      return;
+    }
+
+    applyCampaignWin();
+    setResultReady(false);
+    setScreen('level_result');
+    audio.playVictorySting(1.5);
+
+    const stingMs =
+      STING_MS_MIN + Math.floor(Math.random() * (STING_MS_MAX - STING_MS_MIN));
+    if (stingTimerRef.current) window.clearTimeout(stingTimerRef.current);
+    stingTimerRef.current = window.setTimeout(() => setResultReady(true), stingMs);
+  }, [mode, applyCampaignWin, bumpClear, finishRunLose]);
 
   useEffect(() => {
     if (!engine) return;
-    if (engine.state.gameOver) finishRun(false);
-    else if (engine.state.levelComplete) finishRun(true);
-  }, [tick, engine, finishRun]);
+    if (engine.state.gameOver) finishRunLose();
+    else if (engine.state.levelComplete) beginLevelCompleteFlow();
+  }, [tick, engine, finishRunLose, beginLevelCompleteFlow]);
+
+  // Skip sting with 0.4s hold
+  useEffect(() => {
+    if (screen !== 'level_result' || resultReady) return;
+    let holdStart: number | null = null;
+    let raf = 0;
+    const onDown = () => {
+      holdStart = performance.now();
+      const loop = (now: number) => {
+        if (holdStart && now - holdStart >= 400) {
+          setResultReady(true);
+          if (stingTimerRef.current) window.clearTimeout(stingTimerRef.current);
+          return;
+        }
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+    };
+    const onUp = () => {
+      holdStart = null;
+      cancelAnimationFrame(raf);
+    };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+      cancelAnimationFrame(raf);
+    };
+  }, [screen, resultReady]);
 
   const startEngine = (e: GameEngine) => {
     handledEndRef.current = false;
     engineRef.current = e;
     setEngine(e);
     setTick(0);
+    setInputLocked(false);
+    setResultReady(false);
+    setWashing(false);
+    bumpClear();
     setScreen('playing');
   };
 
@@ -206,6 +324,7 @@ export default function App() {
     setMode('sandbox');
     setIsBoss(false);
     setTheme(getTheme('modern'));
+    setMissionToast(null);
     startEngine(new GameEngine(createSandboxConfig(abilityExtras(progress))));
   };
 
@@ -217,6 +336,7 @@ export default function App() {
     setMode('highscore');
     setIsBoss(false);
     setTheme(getTheme('modern'));
+    setMissionToast(null);
     startEngine(
       new GameEngine(
         createHighScoreConfig({
@@ -235,27 +355,31 @@ export default function App() {
 
   const beginCampaignLevel = (levelIndex: number) => {
     const lvl = UNIVERSE_1.levels[levelIndex];
+    const storyTitle = storyTitleForLevelIndex(levelIndex);
     setPendingLevelIndex(levelIndex);
     setIsBoss(false);
     setStory({
-      title: lvl.title,
+      title: storyTitle,
       blurb: lvl.storyBlurb,
-      chapter: `${UNIVERSE_1.eraLabel} — Level ${lvl.index}`,
+      chapter: `${UNIVERSE_1.eraLabel} — ${lvl.title}`,
     });
+    setMissionToast(easyMissionToast(levelIndex));
     setScreen('story');
   };
 
   const beginBoss = () => {
     setIsBoss(true);
     setStory({
-      title: UNIVERSE_1.boss.name,
+      title: STORYBOARD_U1_BOSS,
       blurb: UNIVERSE_1.boss.storyBlurb,
       chapter: UNIVERSE_1.boss.title,
     });
+    setMissionToast(easyMissionToast(10));
     setScreen('boss_intro');
   };
 
   const launchPendingLevel = () => {
+    bumpClear();
     const extras = abilityExtras(progress);
     if (isBoss) {
       startEngine(
@@ -329,10 +453,64 @@ export default function App() {
   };
 
   const retry = () => {
+    bumpClear();
     if (mode === 'sandbox') startSandbox();
     else if (mode === 'highscore') startHighScore();
-    else if (isBoss) setScreen('boss_intro');
-    else beginCampaignLevel(pendingLevelIndex);
+    else if (isBoss) {
+      setScreen('boss_intro');
+      setInputLocked(false);
+    } else beginCampaignLevel(pendingLevelIndex);
+  };
+
+  const goNextAfterResult = () => {
+    bumpClear();
+    setWashing(true);
+    setScreen('wash');
+    if (washTimerRef.current) window.clearTimeout(washTimerRef.current);
+    washTimerRef.current = window.setTimeout(() => {
+      setWashing(false);
+      if (isBoss) {
+        setEngine(null);
+        engineRef.current = null;
+        setScreen('boss_victory');
+        return;
+      }
+      const nextIdx = pendingLevelIndex + 1;
+      if (nextIdx < UNIVERSE_1.levels.length) {
+        // Interstitial with storyboard title → next level
+        beginCampaignLevel(nextIdx);
+      } else {
+        // All levels done — shop then boss
+        setEngine(null);
+        engineRef.current = null;
+        setScreen('shop');
+      }
+    }, WASH_MS);
+  };
+
+  const levelTitle =
+    isBoss
+      ? UNIVERSE_1.boss.name
+      : mode === 'campaign'
+        ? UNIVERSE_1.levels[pendingLevelIndex]?.title
+        : mode === 'sandbox'
+          ? 'Sandbox Cascade'
+          : 'High Score Run';
+
+  const settingsProps = {
+    bindings,
+    onBindingsChange: (b: ControlBindings) => {
+      setBindings(b);
+      saveBindings(b);
+      bumpClear();
+    },
+    muted: progress.settings.muted,
+    sfxVolume: progress.settings.sfxVolume,
+    musicVolume: progress.settings.musicVolume,
+    onMuteToggle: () =>
+      syncAudioSettings({ muted: !progressRef.current.settings.muted }),
+    onSfxVolume: (v: number) => syncAudioSettings({ sfxVolume: v }),
+    onMusicVolume: (v: number) => syncAudioSettings({ musicVolume: v }),
   };
 
   return (
@@ -344,14 +522,19 @@ export default function App() {
           onHighScore={startHighScore}
           onCampaign={openCampaign}
           onMissions={() => setScreen('missions')}
+          onSettings={() => setShowMenuSettings(true)}
           onMuteToggle={() =>
             persist({
               ...progress,
-              settings: { muted: !progress.settings.muted },
+              settings: { ...progress.settings, muted: !progress.settings.muted },
             })
           }
           onReset={() => persist(resetProgress())}
         />
+      )}
+
+      {showMenuSettings && (
+        <SettingsPanel {...settingsProps} onClose={() => setShowMenuSettings(false)} />
       )}
 
       {screen === 'missions' && (
@@ -409,41 +592,80 @@ export default function App() {
 
       {screen === 'ability_pick' && <AbilityPick onPick={onPickAbility} />}
 
-      {screen === 'playing' && engine && (
+      {(screen === 'playing' || screen === 'level_result' || screen === 'wash') && engine && (
         <PlayScreen
           engine={engine}
           theme={theme}
           inventory={progress.inventory}
           mode={mode}
-          levelTitle={
-            isBoss
-              ? UNIVERSE_1.boss.name
-              : mode === 'campaign'
-                ? UNIVERSE_1.levels[pendingLevelIndex]?.title
-                : mode === 'sandbox'
-                  ? 'Sandbox Cascade'
-                  : 'High Score Run'
-          }
+          levelTitle={levelTitle}
           livesLabel={mode === 'sandbox' ? '∞' : String(engine.state.lives)}
           onUsePowerUp={usePowerUp}
-          onPauseChange={() => setTick((t) => t + 1)}
+          onPauseChange={() => {
+            bumpClear();
+            setTick((t) => t + 1);
+          }}
           onMute={() =>
             persist({
               ...progress,
-              settings: { muted: !progress.settings.muted },
+              settings: { ...progress.settings, muted: !progress.settings.muted },
             })
           }
           muted={progress.settings.muted}
+          sfxVolume={progress.settings.sfxVolume}
+          musicVolume={progress.settings.musicVolume}
+          onSfxVolume={(v) => syncAudioSettings({ sfxVolume: v })}
+          onMusicVolume={(v) => syncAudioSettings({ musicVolume: v })}
           onExitToMenu={() => {
             setEngine(null);
             engineRef.current = null;
             setTheme(getTheme(mode === 'campaign' ? 'cartridge_dawn' : 'modern'));
             setScreen(mode === 'campaign' ? 'campaign_map' : 'menu');
+            bumpClear();
           }}
           tick={tick}
           setTick={setTick}
+          bindings={bindings}
+          onBindingsChange={(b) => {
+            setBindings(b);
+            saveBindings(b);
+            bumpClear();
+          }}
+          showControlsOverlay={
+            screen === 'playing' && !progress.settings.seenControlsOverlay
+          }
+          onDismissControlsOverlay={() => {
+            syncAudioSettings({ seenControlsOverlay: true });
+            bumpClear();
+          }}
+          missionToast={screen === 'playing' ? missionToast : null}
+          onDismissToast={() => setMissionToast(null)}
+          inputLocked={inputLocked || screen === 'level_result' || screen === 'wash'}
+          clearToken={clearToken}
         />
       )}
+
+      {screen === 'level_result' && engine && (
+        <LevelResult
+          stats={engine.state.stats}
+          levelTitle={levelTitle}
+          storyTitle={
+            isBoss
+              ? STORYBOARD_U1_BOSS
+              : storyTitleForLevelIndex(pendingLevelIndex)
+          }
+          ready={resultReady}
+          hasNext={!isBoss && pendingLevelIndex + 1 < UNIVERSE_1.levels.length}
+          onNext={goNextAfterResult}
+          onRetry={() => {
+            if (stingTimerRef.current) window.clearTimeout(stingTimerRef.current);
+            setInputLocked(false);
+            retry();
+          }}
+        />
+      )}
+
+      {screen === 'wash' && washing && <div className="wash-overlay" aria-hidden />}
 
       {screen === 'gameover' && engine && (
         <GameOver

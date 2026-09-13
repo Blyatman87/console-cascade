@@ -6,6 +6,7 @@ interface Props {
   onHighScore: () => void;
   onCampaign: () => void;
   onMissions: () => void;
+  onSettings: () => void;
   onMuteToggle: () => void;
   onReset: () => void;
 }
@@ -16,6 +17,7 @@ export function MainMenu({
   onHighScore,
   onCampaign,
   onMissions,
+  onSettings,
   onMuteToggle,
   onReset,
 }: Props) {
@@ -23,7 +25,7 @@ export function MainMenu({
     <div className="screen menu-screen">
       <div className="menu-hero">
         <div className="dawn-band" aria-hidden="true" />
-      <p className="eyebrow">Cascade Protocol // MVP</p>
+        <p className="eyebrow">Cascade Protocol // MVP</p>
         <h1 className="game-title">Console Cascade</h1>
         <p className="tagline">
           Stack, clear, and cascade through eras of living-room legends — homage only, forever.
@@ -60,6 +62,9 @@ export function MainMenu({
         </button>
         <button type="button" className="menu-btn ghost" onClick={onMissions}>
           Side Missions
+        </button>
+        <button type="button" className="menu-btn ghost" onClick={onSettings}>
+          Settings & Controls
         </button>
       </div>
 

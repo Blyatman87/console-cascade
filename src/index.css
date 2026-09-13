@@ -596,3 +596,196 @@ html[data-pixelated='true'] h2 {
   -webkit-background-clip: text !important;
   background-clip: text !important;
 }
+
+/* —— Game Feel: settings / binds / toast / result / wash —— */
+
+.settings-card {
+  width: min(420px, 100%);
+  max-height: min(90vh, 720px);
+  overflow: auto;
+}
+
+.settings-section {
+  margin: 0.75rem 0 1rem;
+}
+
+.settings-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--cc-accent);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.4rem 0;
+  font-size: 0.9rem;
+}
+
+.settings-row input[type='range'] {
+  flex: 1;
+  max-width: 160px;
+}
+
+.menu-btn.compact {
+  padding: 0.35rem 0.7rem;
+}
+
+.binds-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bind-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.bind-label {
+  font-size: 0.85rem;
+}
+
+.bind-key {
+  min-width: 4.2rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: ui-monospace, monospace;
+}
+
+.bind-key.alt {
+  opacity: 0.85;
+  border-style: dashed;
+}
+
+.bind-key.listening {
+  border-color: var(--cc-accent);
+  background: color-mix(in srgb, var(--cc-accent) 25%, var(--cc-panel));
+  animation: pulse-bind 0.8s ease infinite alternate;
+}
+
+@keyframes pulse-bind {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
+}
+
+.conflict-note,
+.listening-hint {
+  color: var(--cc-accent);
+  font-size: 0.8rem;
+  margin: 0.35rem 0;
+}
+
+.controls-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.controls-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--cc-panel-border);
+}
+
+.controls-list span {
+  font-family: ui-monospace, monospace;
+  color: var(--cc-text-muted);
+}
+
+.mission-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 30;
+  max-width: min(320px, 90vw);
+  background: color-mix(in srgb, var(--cc-accent) 18%, var(--cc-panel));
+  border: 1px solid var(--cc-accent);
+  border-radius: var(--cc-radius);
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: toast-in 0.35s ease;
+}
+
+.toast-label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  color: var(--cc-accent);
+  margin-bottom: 0.25rem;
+}
+
+.mission-toast p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.level-sting .sting-card h2 {
+  margin: 0.25rem 0;
+}
+
+.story-title-chip {
+  display: inline-block;
+  background: color-mix(in srgb, var(--cc-accent) 20%, transparent);
+  border: 1px solid var(--cc-accent);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.stats-grid.compact {
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0.75rem 0;
+}
+
+.tiny {
+  font-size: 0.75rem;
+}
+
+.hold-meter {
+  display: block;
+  height: 3px;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--cc-accent) calc(var(--p) * 100%),
+    var(--cc-panel-border) 0
+  );
+}
+
+.wash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, var(--cc-accent), var(--cc-bg));
+  animation: wash-flash 0.45s ease forwards;
+}
+
+@keyframes wash-flash {
+  0% { opacity: 0; }
+  35% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+.settings-overlay {
+  z-index: 35;
+}

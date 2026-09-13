@@ -37,6 +37,8 @@ export interface EngineConfig {
   extraHoldSlots: number;
   softDropBoost: boolean;
   queueSize: number;
+  /** Delay first piece spawn (ms). Game Feel: 300–500ms after level start. */
+  spawnDelayMs?: number;
 }
 
 export type EngineEvent =
@@ -66,6 +68,7 @@ export interface EngineState {
   dropAccumulator: number;
   disruptionTimer: number;
   lastEvent: EngineEvent | null;
+  spawnDelayRemaining: number;
 }
 
 const LOCK_DELAY_MS = 500;
@@ -86,6 +89,7 @@ export class GameEngine {
   private bag: BagRandomizer;
   private softDropCells = 0;
   private hardDropCells = 0;
+  private pendingFirstSpawn = false;
 
   constructor(config: EngineConfig) {
     this.config = config;
@@ -130,9 +134,14 @@ export class GameEngine {
       dropAccumulator: 0,
       disruptionTimer: 0,
       lastEvent: null,
+      spawnDelayRemaining: config.spawnDelayMs ?? 0,
     };
 
-    this.spawnNext();
+    if ((config.spawnDelayMs ?? 0) > 0) {
+      this.pendingFirstSpawn = true;
+    } else {
+      this.spawnNext();
+    }
   }
 
   private refillQueue() {
@@ -197,7 +206,22 @@ export class GameEngine {
 
   tick(dtMs: number): EngineEvent | null {
     this.state.lastEvent = null;
-    if (this.state.paused || this.state.gameOver || this.state.levelComplete || !this.state.active) {
+    if (this.state.paused || this.state.gameOver || this.state.levelComplete) {
+      return null;
+    }
+
+    // First-piece spawn delay (Game Feel 300–500ms)
+    if (this.pendingFirstSpawn) {
+      this.state.spawnDelayRemaining = Math.max(0, this.state.spawnDelayRemaining - dtMs);
+      this.state.stats.timeMs += dtMs;
+      if (this.state.spawnDelayRemaining <= 0) {
+        this.pendingFirstSpawn = false;
+        this.spawnNext();
+      }
+      return null;
+    }
+
+    if (!this.state.active) {
       return null;
     }
 

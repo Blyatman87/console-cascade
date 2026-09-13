@@ -36,6 +36,9 @@ export function createDefaultProgress(): PlayerProgress {
     },
     settings: {
       muted: false,
+      sfxVolume: 0.7,
+      musicVolume: 0.35,
+      seenControlsOverlay: false,
     },
   };
 }
@@ -50,6 +53,12 @@ export function loadProgress(): PlayerProgress {
     if (!parsed.highScore?.missions?.length) {
       parsed.highScore.missions = createDefaultMissions();
     }
+    parsed.settings = {
+      muted: parsed.settings?.muted ?? false,
+      sfxVolume: parsed.settings?.sfxVolume ?? 0.7,
+      musicVolume: parsed.settings?.musicVolume ?? 0.35,
+      seenControlsOverlay: parsed.settings?.seenControlsOverlay ?? false,
+    };
     return parsed;
   } catch {
     return createDefaultProgress();

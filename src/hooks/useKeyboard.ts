@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import type { ControlBindings } from '../input/controls';
+import { actionForCode, codesForAction } from '../input/controls';
 
 export interface KeyHandlers {
   onLeft?: () => void;
@@ -11,82 +13,152 @@ export interface KeyHandlers {
   onHold?: () => void;
   onPause?: () => void;
   onMute?: () => void;
+  /** When false, gameplay actions ignored (pause/mute still optional). */
   enabled?: boolean;
+  /** Allow pause/mute even when gameplay disabled. */
+  allowMeta?: boolean;
+  bindings: ControlBindings;
+  /** Bump to clear held keys + start ~100ms input ignore window. */
+  clearToken?: number;
 }
 
+const INPUT_CLEAR_MS = 100;
+
 export function useKeyboard(handlers: KeyHandlers) {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+  const downRef = useRef(ignoreSet());
+  const ignoreUntilRef = useRef(0);
+  const softDropCodesRef = useRef<Set<string>>(new Set());
+
+  function ignoreSet() {
+    return new Set<string>();
+  }
+
   useEffect(() => {
-    if (handlers.enabled === false) return;
+    // Clear held keys + brief input ignore on play focus / level start / overlay close
+    downRef.current = ignoreSet();
+    softDropCodesRef.current = new Set();
+    ignoreUntilRef.current = performance.now() + INPUT_CLEAR_MS;
+    handlersRef.current.onSoftDropEnd?.();
+  }, [handlers.clearToken]);
 
-    const down = new Set<string>();
+  useEffect(() => {
+    const fire = (action: ReturnType<typeof actionForCode>, isRepeat: boolean) => {
+      const h = handlersRef.current;
+      if (!action) return;
+      const gameplay =
+        action !== 'pause' && action !== 'mute';
+      if (gameplay && h.enabled === false) return;
+      if (!gameplay && h.enabled === false && h.allowMeta === false) return;
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'c', 'shift', 'p', 'm', 'z', 'x'].includes(k) || e.code === 'Space') {
-        e.preventDefault();
-      }
-      if (down.has(e.code)) {
-        // allow DAS-style repeat for left/right/down via OS repeat
-        if (e.code === 'ArrowLeft') handlers.onLeft?.();
-        if (e.code === 'ArrowRight') handlers.onRight?.();
-        if (e.code === 'ArrowDown') handlers.onSoftDropStart?.();
-        return;
-      }
-      down.add(e.code);
-
-      switch (e.code) {
-        case 'ArrowLeft':
-        case 'KeyA':
-          handlers.onLeft?.();
+      switch (action) {
+        case 'moveLeft':
+          h.onLeft?.();
           break;
-        case 'ArrowRight':
-        case 'KeyD':
-          handlers.onRight?.();
+        case 'moveRight':
+          h.onRight?.();
           break;
-        case 'ArrowDown':
-        case 'KeyS':
-          handlers.onSoftDropStart?.();
+        case 'softDrop':
+          h.onSoftDropStart?.();
           break;
-        case 'ArrowUp':
-        case 'KeyW':
-        case 'KeyX':
-          handlers.onRotateCW?.();
+        case 'hardDrop':
+          // Edge-trigger only — no key repeat
+          if (!isRepeat) h.onHardDrop?.();
           break;
-        case 'KeyZ':
-        case 'ControlLeft':
-        case 'ControlRight':
-          handlers.onRotateCCW?.();
+        case 'rotateCW':
+          if (!isRepeat) h.onRotateCW?.();
           break;
-        case 'Space':
-          handlers.onHardDrop?.();
+        case 'rotateCCW':
+          if (!isRepeat) h.onRotateCCW?.();
           break;
-        case 'KeyC':
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          handlers.onHold?.();
+        case 'hold':
+          if (!isRepeat) h.onHold?.();
           break;
-        case 'KeyP':
-        case 'Escape':
-          handlers.onPause?.();
+        case 'pause':
+          if (!isRepeat) h.onPause?.();
           break;
-        case 'KeyM':
-          handlers.onMute?.();
+        case 'mute':
+          if (!isRepeat) h.onMute?.();
           break;
       }
     };
 
-    const onKeyUp = (e: KeyboardEvent) => {
-      down.delete(e.code);
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-        handlers.onSoftDropEnd?.();
+    const onKeyDown = (e: KeyboardEvent) => {
+      const h = handlersRef.current;
+      const action = actionForCode(h.bindings, e.code);
+      if (!action) return;
+
+      const bound = new Set([
+        ...codesForAction(h.bindings, 'moveLeft'),
+        ...codesForAction(h.bindings, 'moveRight'),
+        ...codesForAction(h.bindings, 'softDrop'),
+        ...codesForAction(h.bindings, 'hardDrop'),
+        ...codesForAction(h.bindings, 'rotateCW'),
+        ...codesForAction(h.bindings, 'rotateCCW'),
+        ...codesForAction(h.bindings, 'hold'),
+        ...codesForAction(h.bindings, 'pause'),
+        ...codesForAction(h.bindings, 'mute'),
+      ]);
+      if (bound.has(e.code)) e.preventDefault();
+
+      if (performance.now() < ignoreUntilRef.current) {
+        downRef.current.add(e.code);
+        return;
       }
+
+      if (action === 'softDrop') {
+        softDropCodesRef.current.add(e.code);
+      }
+
+      // Hard drop: edge only — if already down (incl. OS repeat), skip
+      if (action === 'hardDrop') {
+        if (downRef.current.has(e.code) || e.repeat) {
+          e.preventDefault();
+          return;
+        }
+        downRef.current.add(e.code);
+        fire(action, false);
+        return;
+      }
+
+      // Movement / soft drop may use OS repeat for DAS-feel
+      if (downRef.current.has(e.code)) {
+        if (action === 'moveLeft' || action === 'moveRight' || action === 'softDrop') {
+          fire(action, true);
+        }
+        return;
+      }
+      downRef.current.add(e.code);
+      fire(action, e.repeat);
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      const h = handlersRef.current;
+      downRef.current.delete(e.code);
+      // Soft drop ends on keyup of any bound soft-drop key
+      const softCodes = codesForAction(h.bindings, 'softDrop');
+      if (softCodes.includes(e.code)) {
+        softDropCodesRef.current.delete(e.code);
+        if (softDropCodesRef.current.size === 0) {
+          h.onSoftDropEnd?.();
+        }
+      }
+    };
+
+    const onBlur = () => {
+      downRef.current = ignoreSet();
+      softDropCodesRef.current = new Set();
+      handlersRef.current.onSoftDropEnd?.();
     };
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
     };
-  }, [handlers]);
+  }, []);
 }

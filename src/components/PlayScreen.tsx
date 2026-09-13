@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GameEngine } from '../game/engine';
 import type { Inventory, PowerUpId, ThemePalette, GameMode } from '../types/models';
+import type { ControlBindings } from '../input/controls';
 import { GameBoard } from './GameBoard';
 import { MiniPiece } from './MiniPiece';
 import { TouchControls } from './TouchControls';
 import { PowerUpBar } from './PowerUpBar';
+import { SettingsPanel } from './SettingsPanel';
+import { ControlsOverlay } from './ControlsOverlay';
+import { MissionToast } from './MissionToast';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useKeyboard } from '../hooks/useKeyboard';
 import { ROWS, COLS } from '../game/board';
+import { audio } from '../audio/audio';
+import { formatCode } from '../input/controls';
 
 interface Props {
   engine: GameEngine;
@@ -20,10 +26,22 @@ interface Props {
   onPauseChange: (paused: boolean) => void;
   onMute: () => void;
   muted: boolean;
+  sfxVolume: number;
+  musicVolume: number;
+  onSfxVolume: (v: number) => void;
+  onMusicVolume: (v: number) => void;
   onExitToMenu: () => void;
-  /** Force re-render tick from parent when engine state changes externally */
   tick: number;
   setTick: (n: number | ((t: number) => number)) => void;
+  bindings: ControlBindings;
+  onBindingsChange: (b: ControlBindings) => void;
+  showControlsOverlay: boolean;
+  onDismissControlsOverlay: () => void;
+  missionToast: string | null;
+  onDismissToast: () => void;
+  /** When true, freeze input (level complete sting/result handled by parent). */
+  inputLocked?: boolean;
+  clearToken: number;
 }
 
 export function PlayScreen({
@@ -37,11 +55,24 @@ export function PlayScreen({
   onPauseChange,
   onMute,
   muted,
+  sfxVolume,
+  musicVolume,
+  onSfxVolume,
+  onMusicVolume,
   onExitToMenu,
   tick,
   setTick,
+  bindings,
+  onBindingsChange,
+  showControlsOverlay,
+  onDismissControlsOverlay,
+  missionToast,
+  onDismissToast,
+  inputLocked = false,
+  clearToken,
 }: Props) {
   const [cellSize, setCellSize] = useState(28);
+  const [showSettings, setShowSettings] = useState(false);
   const state = engine.state;
   const ghost = engine.getGhost();
 
@@ -58,23 +89,65 @@ export function PlayScreen({
     return () => window.removeEventListener('resize', fit);
   }, []);
 
+  useEffect(() => {
+    audio.setMuted(muted);
+    audio.setSfxVolume(sfxVolume);
+    audio.setMusicVolume(musicVolume);
+  }, [muted, sfxVolume, musicVolume]);
+
+  useEffect(() => {
+    audio.resume();
+    if (!muted) audio.startMusic();
+    return () => audio.stopMusic();
+  }, [muted]);
+
+  // SFX from engine events
+  useEffect(() => {
+    const ev = engine.state.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'piece_locked') audio.play('lock');
+    else if (ev.type === 'lines_cleared') audio.play('clear');
+    else if (ev.type === 'level_complete') audio.play('levelComplete');
+    else if (ev.type === 'level_up') audio.play('ui');
+  }, [tick, engine]);
+
   const bump = useCallback(() => setTick((t) => t + 1), [setTick]);
 
-  useGameLoop(engine, !state.paused && !state.gameOver && !state.levelComplete, bump);
+  const loopActive =
+    !state.paused &&
+    !state.gameOver &&
+    !state.levelComplete &&
+    !showSettings &&
+    !showControlsOverlay &&
+    !inputLocked;
+
+  useGameLoop(engine, loopActive, bump);
+
+  const gameplayOff =
+    state.paused ||
+    state.gameOver ||
+    state.levelComplete ||
+    showSettings ||
+    showControlsOverlay ||
+    inputLocked;
 
   const handlers = useMemo(
     () => ({
-      enabled: !state.gameOver && !state.levelComplete,
+      enabled: !gameplayOff,
+      allowMeta: !showSettings && !showControlsOverlay && !inputLocked,
+      bindings,
+      clearToken,
       onLeft: () => {
-        engine.tryMove(-1, 0);
+        if (engine.tryMove(-1, 0)) audio.play('move');
         bump();
       },
       onRight: () => {
-        engine.tryMove(1, 0);
+        if (engine.tryMove(1, 0)) audio.play('move');
         bump();
       },
       onSoftDropStart: () => {
         engine.setSoftDrop(true);
+        audio.play('soft');
         bump();
       },
       onSoftDropEnd: () => {
@@ -83,34 +156,50 @@ export function PlayScreen({
       },
       onHardDrop: () => {
         engine.hardDrop();
+        audio.play('hard');
         bump();
       },
       onRotateCW: () => {
-        engine.rotate(1);
+        if (engine.rotate(1)) audio.play('rotate');
         bump();
       },
       onRotateCCW: () => {
-        engine.rotate(-1);
+        if (engine.rotate(-1)) audio.play('rotate');
         bump();
       },
       onHold: () => {
         engine.hold();
+        audio.play('hold');
         bump();
       },
       onPause: () => {
+        if (showSettings || showControlsOverlay || inputLocked || state.levelComplete) return;
         engine.togglePause();
+        audio.play('pause');
         onPauseChange(engine.state.paused);
         bump();
       },
       onMute,
     }),
-    [engine, bump, onMute, onPauseChange, state.gameOver, state.levelComplete],
+    [
+      engine,
+      bump,
+      onMute,
+      onPauseChange,
+      gameplayOff,
+      showSettings,
+      showControlsOverlay,
+      inputLocked,
+      state.levelComplete,
+      bindings,
+      clearToken,
+    ],
   );
 
   useKeyboard(handlers);
 
-  // Number keys 1-6 for power-ups
   useEffect(() => {
+    if (gameplayOff) return;
     const ids: PowerUpId[] = [
       'slow_time',
       'clear_bottom',
@@ -128,13 +217,30 @@ export function PlayScreen({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onUsePowerUp, bump]);
+  }, [onUsePowerUp, bump, gameplayOff]);
 
-  void tick; // dependency for re-render
+  void tick;
 
   const now = state.stats.timeMs;
   const slowActive = now < state.effects.slowTimeUntil;
   const lockActive = now < state.effects.gravityLockUntil;
+  const pauseHint = `${formatCode(bindings.pause.primary)}${
+    bindings.pause.alt ? ` / ${formatCode(bindings.pause.alt)}` : ''
+  }`;
+
+  const openSettings = () => {
+    if (!state.paused && !state.levelComplete && !state.gameOver) {
+      engine.togglePause();
+      onPauseChange(true);
+      bump();
+    }
+    setShowSettings(true);
+  };
+
+  const closeSettings = () => {
+    setShowSettings(false);
+    bump();
+  };
 
   return (
     <div className="play-screen">
@@ -144,8 +250,11 @@ export function PlayScreen({
           <h2>{levelTitle ?? 'Cascade'}</h2>
         </div>
         <div className="play-header-actions">
-          <button type="button" className="icon-btn" onClick={onMute} title="Mute (M)">
+          <button type="button" className="icon-btn" onClick={onMute} title="Mute">
             {muted ? '🔇' : '🔊'}
+          </button>
+          <button type="button" className="icon-btn" onClick={openSettings} title="Settings">
+            ⚙
           </button>
           <button
             type="button"
@@ -155,7 +264,7 @@ export function PlayScreen({
               onPauseChange(engine.state.paused);
               bump();
             }}
-            title="Pause (P)"
+            title={`Pause (${pauseHint})`}
           >
             ❚❚
           </button>
@@ -172,12 +281,29 @@ export function PlayScreen({
             ))}
           </div>
           <div className="panel-box stats-box">
-            <div><span>Score</span><strong>{state.stats.score.toLocaleString()}</strong></div>
-            <div><span>Lines</span><strong>{state.stats.lines}</strong></div>
-            <div><span>Level</span><strong>{state.stats.level}</strong></div>
-            {livesLabel && <div><span>Lives</span><strong>{livesLabel}</strong></div>}
+            <div>
+              <span>Score</span>
+              <strong>{state.stats.score.toLocaleString()}</strong>
+            </div>
+            <div>
+              <span>Lines</span>
+              <strong>{state.stats.lines}</strong>
+            </div>
+            <div>
+              <span>Level</span>
+              <strong>{state.stats.level}</strong>
+            </div>
+            {livesLabel && (
+              <div>
+                <span>Lives</span>
+                <strong>{livesLabel}</strong>
+              </div>
+            )}
             {state.effects.shieldCharges > 0 && (
-              <div><span>Shield</span><strong>×{state.effects.shieldCharges}</strong></div>
+              <div>
+                <span>Shield</span>
+                <strong>×{state.effects.shieldCharges}</strong>
+              </div>
             )}
           </div>
         </aside>
@@ -210,7 +336,7 @@ export function PlayScreen({
 
       <PowerUpBar
         inventory={inventory}
-        disabled={state.paused || state.gameOver}
+        disabled={state.paused || state.gameOver || inputLocked}
         onUse={(id) => {
           onUsePowerUp(id);
           bump();
@@ -229,11 +355,31 @@ export function PlayScreen({
         onPause={handlers.onPause!}
       />
 
-      {state.paused && (
+      {missionToast && <MissionToast message={missionToast} onDone={onDismissToast} />}
+
+      {showControlsOverlay && (
+        <ControlsOverlay bindings={bindings} onDismiss={onDismissControlsOverlay} />
+      )}
+
+      {showSettings && (
+        <SettingsPanel
+          bindings={bindings}
+          onBindingsChange={onBindingsChange}
+          muted={muted}
+          sfxVolume={sfxVolume}
+          musicVolume={musicVolume}
+          onMuteToggle={onMute}
+          onSfxVolume={onSfxVolume}
+          onMusicVolume={onMusicVolume}
+          onClose={closeSettings}
+        />
+      )}
+
+      {state.paused && !showSettings && !showControlsOverlay && !inputLocked && (
         <div className="overlay">
           <div className="overlay-card">
             <h2>Paused</h2>
-            <p className="muted">P / Esc to resume</p>
+            <p className="muted">{pauseHint} to resume</p>
             <button
               type="button"
               className="menu-btn primary"
@@ -244,6 +390,9 @@ export function PlayScreen({
               }}
             >
               Resume
+            </button>
+            <button type="button" className="menu-btn ghost" onClick={openSettings}>
+              Settings & Controls
             </button>
             <button type="button" className="menu-btn ghost" onClick={onExitToMenu}>
               Quit to Menu
