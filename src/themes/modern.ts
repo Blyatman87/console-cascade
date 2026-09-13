@@ -1,0 +1,31 @@
+import type { ThemePalette } from '../types/models';
+
+export const modernTheme: ThemePalette = {
+  id: 'modern',
+  name: 'Modern Cascade',
+  bg: '#0b1020',
+  bgAlt: '#121a2f',
+  panel: '#161f38',
+  panelBorder: '#2a3a66',
+  text: '#e8eefc',
+  textMuted: '#8b9bb8',
+  accent: '#5b8cff',
+  accentAlt: '#ff6bcb',
+  boardBg: '#0a0e1a',
+  gridLine: '#1c2744',
+  piece: {
+    I: '#00e5ff',
+    O: '#ffd60a',
+    T: '#bf5af2',
+    S: '#30d158',
+    Z: '#ff453a',
+    J: '#0a84ff',
+    L: '#ff9f0a',
+  },
+  garbage: '#5c677a',
+  ghost: 'rgba(232,238,252,0.18)',
+  fontFamily: "'Segoe UI', system-ui, sans-serif",
+  titleFont: "'Segoe UI', system-ui, sans-serif",
+  uiRadius: '12px',
+  pixelated: false,
+};
